@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "LeetCode Complexity Analyzer",
+  "version": "1.0",
+  "description": "Analyze time and space complexity of LeetCode solutions using AI",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["https://leetcode.com/*"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://leetcode.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
