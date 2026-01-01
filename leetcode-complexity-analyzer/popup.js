@@ -1,57 +1,93 @@
-document.getElementById("analyzeBtn").addEventListener("click", () => {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.tabs.sendMessage(tabs[0].id, { type: "GET_CODE" }, (response) => {
-      const resultDiv = document.getElementById("result");
+const analyzeBtn = document.getElementById("analyzeBtn");
+const resultDiv = document.getElementById("result");
+const suggestionsDiv = document.getElementById("suggestions");
+const toggleBtn = document.getElementById("toggleSuggestions");
 
-      if (!response || !response.code) {
-        resultDiv.innerText = "No code found. Open a LeetCode problem.";
-        return;
+let suggestionsVisible = false;
+
+analyzeBtn.addEventListener("click", async () => {
+  try {
+    resultDiv.innerHTML = "Analyzing...";
+    suggestionsDiv.innerHTML = "";
+    toggleBtn.style.display = "none";
+
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      type: "GET_CODE"
+    });
+
+    if (!response || response.error || !response.code) {
+      throw new Error("Could not extract code");
+    }
+
+    const backendRes = await fetch("http://localhost:3000/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        language: "cpp",
+        code: response.code
+      })
+    });
+
+      const data = await backendRes.json();
+
+      if (!backendRes.ok || data.error) {
+        throw new Error(data.error || "Backend failed");
       }
 
-      const analysis = analyzeComplexity(response.code);
-      resultDiv.innerText = analysis;
+      renderResult(data);
+
+    // 🔥 NEW — clear old highlights
+    chrome.tabs.sendMessage(tab.id, {
+      type: "CLEAR_HIGHLIGHTS"
     });
-  });
+
+    // 🔥 NEW — send bottleneck lines to content.js
+    if (data.bottleneck_lines && data.bottleneck_lines.length > 0) {
+      chrome.tabs.sendMessage(tab.id, {
+        type: "HIGHLIGHT_LINES",
+        lines: data.bottleneck_lines
+      });
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Analysis failed. Check console.");
+  }
 });
 
+function renderResult(data) {
+  resultDiv.innerHTML = `
+    <p><strong>Time:</strong> ${data.time_complexity}</p>
+    <p><strong>Space:</strong> ${data.space_complexity}</p>
+    <p><strong>Optimal:</strong> ${data.is_optimal ? "Yes ✅" : "No ❌"}</p>
+  `;
 
-function analyzeComplexity(code) {
-  // 1. Loop detection
-  const forLoops = (code.match(/\bfor\s*\(/g) || []).length;
-  const whileLoops = (code.match(/\bwhile\s*\(/g) || []).length;
-  const totalLoops = forLoops + whileLoops;
+  const suggestions =
+    data.suggestions && data.suggestions.length > 0
+      ? data.suggestions
+      : ["This solution is already optimal. No improvements needed."];
 
-  // 2. Nested loops (rough estimate)
-  const nestedLoops = code.match(/for\s*\([^)]*\)\s*\{[^}]*for\s*\(/gs)?.length || 0;
+  suggestionsDiv.innerHTML = `
+    <ul>
+      ${suggestions.map(s => `<li>${s}</li>`).join("")}
+    </ul>
+  `;
 
-  // 3. Recursion detection (self-call)
-  const functionNames = [...code.matchAll(/\b(\w+)\s*\([^)]*\)\s*\{/g)]
-    .map(m => m[1]);
-
-  let recursion = false;
-  for (const fn of functionNames) {
-    const calls = code.match(new RegExp(`\\b${fn}\\s*\\(`, "g")) || [];
-    if (calls.length > 1) {
-      recursion = true;
-      break;
-    }
-  }
-
-  // 4. Space complexity clues
-  const usesVector = /\bvector<|unordered_map|map|set|stack|queue/.test(code);
-  const recursionStack = recursion;
-
-  // ---- Time Complexity ----
-  let time = "O(1)";
-  if (nestedLoops > 0) time = "O(n²)";
-  else if (totalLoops === 1) time = "O(n)";
-  else if (totalLoops > 1) time = "O(n²)";
-  if (recursion) time = "O(recursive)";
-
-  // ---- Space Complexity ----
-  let space = "O(1)";
-  if (usesVector) space = "O(n)";
-  if (recursionStack) space = "O(n) (recursion stack)";
-
-  return `Time Complexity: ${time}\nSpace Complexity: ${space}`;
+  suggestionsDiv.style.display = "none";
+  toggleBtn.textContent = "Show Suggestions";
+  toggleBtn.style.display = "block";
+  suggestionsVisible = false;
 }
+
+toggleBtn.addEventListener("click", () => {
+  suggestionsVisible = !suggestionsVisible;
+  suggestionsDiv.style.display = suggestionsVisible ? "block" : "none";
+  toggleBtn.textContent = suggestionsVisible
+    ? "Hide Suggestions"
+    : "Show Suggestions";
+});

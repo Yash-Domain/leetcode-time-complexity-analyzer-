@@ -1,12 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      width: 280px;
+      padding: 10px;
+    }
+    button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 8px;
+    }
+    #suggestions {
+      margin-top: 8px;
+      display: none;
+    }
+  </style>
 </head>
 <body>
+
   <h3>LeetCode Analyzer</h3>
+
   <button id="analyzeBtn">Analyze Complexity</button>
+
   <div id="result"></div>
+
+  <button id="toggleSuggestions" style="display:none;"></button>
+  <div id="suggestions"></div>
 
   <script src="popup.js"></script>
 </body>
