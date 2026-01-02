@@ -1,3 +1,5 @@
+console.log("🔥 popup.js loaded");
+
 const analyzeBtn = document.getElementById("analyzeBtn");
 const resultDiv = document.getElementById("result");
 const suggestionsDiv = document.getElementById("suggestions");
@@ -7,7 +9,7 @@ let suggestionsVisible = false;
 
 analyzeBtn.addEventListener("click", async () => {
   try {
-    resultDiv.innerHTML = "Analyzing...";
+    resultDiv.innerHTML = "<p>Analyzing...</p>";
     suggestionsDiv.innerHTML = "";
     toggleBtn.style.display = "none";
 
@@ -21,7 +23,7 @@ analyzeBtn.addEventListener("click", async () => {
     });
 
     if (!response || response.error || !response.code) {
-      throw new Error("Could not extract code");
+      throw new Error("Could not extract code from editor");
     }
 
     const backendRes = await fetch("http://localhost:3000/analyze", {
@@ -33,48 +35,61 @@ analyzeBtn.addEventListener("click", async () => {
       })
     });
 
-      const data = await backendRes.json();
+    const data = await backendRes.json();
 
-      if (!backendRes.ok || data.error) {
-        throw new Error(data.error || "Backend failed");
-      }
-
-      renderResult(data);
-
-    // 🔥 NEW — clear old highlights
-    chrome.tabs.sendMessage(tab.id, {
-      type: "CLEAR_HIGHLIGHTS"
-    });
-
-    // 🔥 NEW — send bottleneck lines to content.js
-    if (data.bottleneck_lines && data.bottleneck_lines.length > 0) {
-      chrome.tabs.sendMessage(tab.id, {
-        type: "HIGHLIGHT_LINES",
-        lines: data.bottleneck_lines
-      });
+    // 🚨 Explicit backend failure handling
+    if (!backendRes.ok || data.ok === false) {
+      throw new Error(data.error || data.message || "Backend failed");
     }
 
+    renderResult(data);
+
+    // 🔜 (next session) bottleneck highlighting will go here
+
   } catch (err) {
-    console.error(err);
-    alert("Analysis failed. Check console.");
+    console.error("❌ Popup error:", err);
+    resultDiv.innerHTML = `
+      <p style="color:red;">
+        Analysis failed: ${err.message}
+      </p>
+    `;
+    toggleBtn.style.display = "none";
   }
 });
 
 function renderResult(data) {
+  if (!data.parsed_json) {
+    resultDiv.innerHTML = `
+      <p style="color:red;">
+        Analysis unavailable${data.message ? `: ${data.message}` : ""}
+      </p>
+    `;
+    toggleBtn.style.display = "none";
+    return;
+  }
+
+  const {
+    time_complexity,
+    space_complexity,
+    is_optimal,
+    suggestions
+  } = data.parsed_json;
+
   resultDiv.innerHTML = `
-    <p><strong>Time:</strong> ${data.time_complexity}</p>
-    <p><strong>Space:</strong> ${data.space_complexity}</p>
-    <p><strong>Optimal:</strong> ${data.is_optimal ? "Yes ✅" : "No ❌"}</p>
+    <p><strong>Time:</strong> ${time_complexity}</p>
+    <p><strong>Space:</strong> ${space_complexity}</p>
+    <p><strong>Optimal:</strong> ${is_optimal ? "Yes ✅" : "No ❌"}</p>
   `;
 
-  const suggestions =
-    data.suggestions && data.suggestions.length > 0
-      ? data.suggestions
-      : ["This solution is already optimal. No improvements needed."];
+  const finalSuggestions = is_optimal
+    ? ["This solution is already optimal. No improvements needed."]
+    : (suggestions && suggestions.length > 0
+        ? suggestions
+        : ["Consider optimizing this solution."]);
 
   suggestionsDiv.innerHTML = `
     <ul>
-      ${suggestions.map(s => `<li>${s}</li>`).join("")}
+      ${finalSuggestions.map(s => `<li>${s}</li>`).join("")}
     </ul>
   `;
 
