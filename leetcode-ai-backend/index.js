@@ -84,13 +84,35 @@ ${code}
       let content = outer?.choices?.[0]?.message?.content;
 
       if (content) {
-        // 🔥 ONLY CHANGE: strip markdown safely
         content = content
           .replace(/```json/i, "")
           .replace(/```/g, "")
           .trim();
 
         parsed = JSON.parse(content);
+
+        /* 🔧 MINIMAL NORMALIZATION STARTS HERE */
+
+        if (Array.isArray(parsed.bottleneck_lines)) {
+          const totalLines = code.split("\n").length;
+
+          const region = new Set();
+
+          parsed.bottleneck_lines.forEach((line) => {
+            if (typeof line === "number") {
+              // expand to small region: line-1, line, line+1
+              for (let l = line - 1; l <= line + 1; l++) {
+                if (l >= 1 && l <= totalLines) {
+                  region.add(l);
+                }
+              }
+            }
+          });
+
+          parsed.bottleneck_lines = Array.from(region).sort((a, b) => a - b);
+        }
+
+        /* 🔧 MINIMAL NORMALIZATION ENDS HERE */
       }
     } catch (e) {
       console.warn("⚠️ JSON parse failed");
