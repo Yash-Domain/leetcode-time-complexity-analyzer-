@@ -1,39 +1,3 @@
-console.log("✅ LeetCode Analyzer content script loaded");
-
-let highlightedElements = [];
-
-/* ---------------- MESSAGE LISTENER ---------------- */
-
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  console.log("📩 Received in content.js:", msg);
-
-  if (msg.type === "HIGHLIGHT_LINES") {
-    highlightLinesDOM(msg.lines);
-  }
-
-  if (msg.type === "CLEAR_HIGHLIGHTS") {
-    clearHighlightsDOM();
-  }
-
-  if (msg.type === "GET_CODE") {
-    try {
-      const editor = document.querySelector(".monaco-editor");
-      const textarea = editor?.querySelector("textarea");
-
-      if (!textarea?.value) {
-        sendResponse({ error: "Code not found" });
-        return;
-      }
-
-      sendResponse({ code: textarea.value });
-    } catch (e) {
-      sendResponse({ error: e.message });
-    }
-  }
-});
-
-/* ---------------- DOM HIGHLIGHTING ---------------- */
-
 function clearHighlightsDOM() {
   highlightedElements.forEach(el => {
     el.classList.remove("leetcode-dom-highlight");
@@ -45,23 +9,34 @@ function highlightLinesDOM(lines) {
   clearHighlightsDOM();
 
   const editor = document.querySelector(".monaco-editor");
-  if (!editor) {
-    console.warn("❌ Monaco editor DOM not found");
-    return;
+  if (!editor) return;
+
+  const viewLines = Array.from(editor.querySelectorAll(".view-line"));
+
+  // 🔑 Find first loop line visually
+  let firstLoopIndex = -1;
+  for (let i = 0; i < viewLines.length; i++) {
+    const text = viewLines[i].innerText || "";
+    if (text.includes("for (") || text.includes("while (")) {
+      firstLoopIndex = i;
+      break;
+    }
   }
 
-  // Monaco renders visible lines as .view-line
-  const viewLines = editor.querySelectorAll(".view-line");
-
   lines.forEach(lineNumber => {
-    const index = lineNumber - 1; // 1-based → 0-based
-    const lineEl = viewLines[index];
+    let idx = lineNumber - 1;
 
+    // ⛔ Do not highlight above first loop
+    if (firstLoopIndex !== -1 && idx < firstLoopIndex) {
+      idx = firstLoopIndex;
+    }
+
+    const lineEl = viewLines[idx];
     if (lineEl) {
       lineEl.classList.add("leetcode-dom-highlight");
       highlightedElements.push(lineEl);
     }
   });
 
-  console.log("✅ DOM highlight applied:", lines);
+  console.log("✅ DOM highlight applied (loop-aligned):", lines);
 }
