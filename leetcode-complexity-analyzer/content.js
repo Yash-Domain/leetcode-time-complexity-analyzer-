@@ -1,9 +1,19 @@
 console.log("✅ LeetCode Analyzer content script loaded");
 
-let currentDecorations = [];
+let highlightedElements = [];
+
+/* ---------------- MESSAGE LISTENER ---------------- */
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   console.log("📩 Received in content.js:", msg);
+
+  if (msg.type === "HIGHLIGHT_LINES") {
+    highlightLinesDOM(msg.lines);
+  }
+
+  if (msg.type === "CLEAR_HIGHLIGHTS") {
+    clearHighlightsDOM();
+  }
 
   if (msg.type === "GET_CODE") {
     try {
@@ -20,47 +30,38 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ error: e.message });
     }
   }
-
-  if (msg.type === "CLEAR_HIGHLIGHTS") {
-    clearHighlights();
-  }
-
-  if (msg.type === "HIGHLIGHT_LINES") {
-    highlightLines(msg.lines);
-  }
 });
 
-/* ---------------- FIXED HIGHLIGHT LOGIC ---------------- */
+/* ---------------- DOM HIGHLIGHTING ---------------- */
 
-function getMonacoEditorInstance() {
-  if (!window.__monaco_editor__) {
-    console.warn("❌ __monaco_editor__ not found");
-    return null;
+function clearHighlightsDOM() {
+  highlightedElements.forEach(el => {
+    el.classList.remove("leetcode-dom-highlight");
+  });
+  highlightedElements = [];
+}
+
+function highlightLinesDOM(lines) {
+  clearHighlightsDOM();
+
+  const editor = document.querySelector(".monaco-editor");
+  if (!editor) {
+    console.warn("❌ Monaco editor DOM not found");
+    return;
   }
-  return window.__monaco_editor__;
-}
 
-function clearHighlights() {
-  const editor = getMonacoEditorInstance();
-  if (!editor) return;
+  // Monaco renders visible lines as .view-line
+  const viewLines = editor.querySelectorAll(".view-line");
 
-  currentDecorations = editor.deltaDecorations(currentDecorations, []);
-}
+  lines.forEach(lineNumber => {
+    const index = lineNumber - 1; // 1-based → 0-based
+    const lineEl = viewLines[index];
 
-function highlightLines(lines) {
-  const editor = getMonacoEditorInstance();
-  if (!editor) return;
-
-  clearHighlights();
-
-  const decorations = lines.map(line => ({
-    range: new window.monaco.Range(line, 1, line, 1),
-    options: {
-      isWholeLine: true,
-      className: "leetcode-bottleneck-line",
-      glyphMarginClassName: "leetcode-bottleneck-glyph"
+    if (lineEl) {
+      lineEl.classList.add("leetcode-dom-highlight");
+      highlightedElements.push(lineEl);
     }
-  }));
+  });
 
-  currentDecorations = editor.deltaDecorations([], decorations);
+  console.log("✅ DOM highlight applied:", lines);
 }

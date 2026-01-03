@@ -22,7 +22,9 @@
     {
       "matches": ["https://leetcode.com/*"],
       "js": ["content.js"],
-      "css": ["content.css"]
+      "css": ["content.css"],
+      "all_frames": true,
+      "run_at": "document_start"
     }
   ]
 }

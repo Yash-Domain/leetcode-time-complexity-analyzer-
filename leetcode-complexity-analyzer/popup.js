@@ -18,6 +18,15 @@ analyzeBtn.addEventListener("click", async () => {
       currentWindow: true
     });
 
+    /* ---------------- SUBSESSION 1 TEST ---------------- */
+    const testLines = [3, 4];
+
+    chrome.tabs.sendMessage(tab.id, {
+      type: "HIGHLIGHT_LINES",
+      lines: testLines
+    });
+    /* --------------------------------------------------- */
+
     const response = await chrome.tabs.sendMessage(tab.id, {
       type: "GET_CODE"
     });
@@ -37,14 +46,11 @@ analyzeBtn.addEventListener("click", async () => {
 
     const data = await backendRes.json();
 
-    // 🚨 Explicit backend failure handling
     if (!backendRes.ok || data.ok === false) {
       throw new Error(data.error || data.message || "Backend failed");
     }
 
     renderResult(data);
-
-    // 🔜 (next session) bottleneck highlighting will go here
 
   } catch (err) {
     console.error("❌ Popup error:", err);
@@ -61,7 +67,7 @@ function renderResult(data) {
   if (!data.parsed_json) {
     resultDiv.innerHTML = `
       <p style="color:red;">
-        Analysis unavailable${data.message ? `: ${data.message}` : ""}
+        Analysis unavailable
       </p>
     `;
     toggleBtn.style.display = "none";
