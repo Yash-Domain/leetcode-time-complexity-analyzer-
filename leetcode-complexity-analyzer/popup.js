@@ -18,15 +18,7 @@ analyzeBtn.addEventListener("click", async () => {
       currentWindow: true
     });
 
-    /* ---------------- SUBSESSION 1 TEST ---------------- */
-    const testLines = [3, 4];
-
-    chrome.tabs.sendMessage(tab.id, {
-      type: "HIGHLIGHT_LINES",
-      lines: testLines
-    });
-    /* --------------------------------------------------- */
-
+    // 1️⃣ Get code from editor
     const response = await chrome.tabs.sendMessage(tab.id, {
       type: "GET_CODE"
     });
@@ -35,6 +27,7 @@ analyzeBtn.addEventListener("click", async () => {
       throw new Error("Could not extract code from editor");
     }
 
+    // 2️⃣ Send code to backend
     const backendRes = await fetch("http://localhost:3000/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -46,11 +39,28 @@ analyzeBtn.addEventListener("click", async () => {
 
     const data = await backendRes.json();
 
+    // 🚨 Explicit backend failure handling (NO masking)
     if (!backendRes.ok || data.ok === false) {
       throw new Error(data.error || data.message || "Backend failed");
     }
 
+    // 3️⃣ Render result in popup
     renderResult(data);
+
+    // 4️⃣ SUBSESSION 3 — Backend → DOM Highlight integration
+    const bottleneckLines = data.parsed_json?.bottleneck_lines;
+
+    if (Array.isArray(bottleneckLines) && bottleneckLines.length > 0) {
+      chrome.tabs.sendMessage(tab.id, {
+        type: "HIGHLIGHT_LINES",
+        lines: bottleneckLines
+      });
+    } else {
+      // Optimal or no bottlenecks → clear previous highlights
+      chrome.tabs.sendMessage(tab.id, {
+        type: "CLEAR_HIGHLIGHTS"
+      });
+    }
 
   } catch (err) {
     console.error("❌ Popup error:", err);
@@ -62,6 +72,8 @@ analyzeBtn.addEventListener("click", async () => {
     toggleBtn.style.display = "none";
   }
 });
+
+/* ---------------- UI RENDERING ---------------- */
 
 function renderResult(data) {
   if (!data.parsed_json) {
@@ -104,6 +116,8 @@ function renderResult(data) {
   toggleBtn.style.display = "block";
   suggestionsVisible = false;
 }
+
+/* ---------------- SUGGESTION TOGGLE ---------------- */
 
 toggleBtn.addEventListener("click", () => {
   suggestionsVisible = !suggestionsVisible;
