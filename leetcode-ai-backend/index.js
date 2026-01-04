@@ -26,7 +26,7 @@ app.post("/analyze", async (req, res) => {
       return res.status(400).json({ error: "Code required" });
     }
 
-    const prompt = `
+const prompt = `
 You are a code complexity analyzer.
 
 Analyze the following ${language} code.
@@ -43,6 +43,7 @@ JSON schema (must match exactly):
   "space_complexity": "string",
   "is_optimal": boolean,
   "bottleneck_lines": number[],
+  "bottleneck_code": string[],
   "suggestions": string[]
 }
 
@@ -50,11 +51,15 @@ Rules:
 - time_complexity must be Big-O
 - space_complexity must be Big-O
 - bottleneck_lines must be 1-based
+- bottleneck_code must contain the EXACT lines copied verbatim from the input code where the main time complexity bottleneck occurs
+- Do NOT paraphrase bottleneck_code
+- Preserve spacing and symbols exactly as in input
 - suggestions empty if optimal
 
 Code:
 ${code}
 `;
+
 
     const aiRes = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
