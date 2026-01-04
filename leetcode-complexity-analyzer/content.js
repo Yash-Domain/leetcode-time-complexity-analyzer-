@@ -96,3 +96,6 @@ function observeEditorChanges() {
 /* ---------------- START OBSERVER ---------------- */
 
 observeEditorChanges();
+
+window.addEventListener("beforeunload", clearHighlights);
+
