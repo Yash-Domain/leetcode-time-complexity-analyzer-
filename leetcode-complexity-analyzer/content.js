@@ -1,6 +1,7 @@
 console.log("✅ LeetCode Analyzer content script loaded");
 
 let highlightedElements = [];
+let observerStarted = false;
 
 /* ---------------- MESSAGE LISTENER ---------------- */
 
@@ -54,15 +55,12 @@ function highlightByCode(bottleneckCode) {
   if (!editor) return;
 
   const viewLines = Array.from(editor.querySelectorAll(".view-line"));
-
   const normalizedTargets = bottleneckCode.map(normalize);
 
   viewLines.forEach(lineEl => {
     const text = normalize(lineEl.innerText || "");
 
-    if (
-      normalizedTargets.some(target => text.includes(target))
-    ) {
+    if (normalizedTargets.some(target => text.includes(target))) {
       lineEl.classList.add("leetcode-dom-highlight");
       highlightedElements.push(lineEl);
     }
@@ -70,3 +68,31 @@ function highlightByCode(bottleneckCode) {
 
   console.log("✅ Highlighted bottleneck_code:", bottleneckCode);
 }
+
+/* ---------------- AUTO-CLEAR ON EDIT ---------------- */
+
+function observeEditorChanges() {
+  if (observerStarted) return;
+
+  const editor = document.querySelector(".monaco-editor");
+  if (!editor) return;
+
+  const observer = new MutationObserver(() => {
+    if (highlightedElements.length > 0) {
+      clearHighlights();
+      console.log("🧹 Highlights cleared due to editor change");
+    }
+  });
+
+  observer.observe(editor, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
+
+  observerStarted = true;
+}
+
+/* ---------------- START OBSERVER ---------------- */
+
+observeEditorChanges();
