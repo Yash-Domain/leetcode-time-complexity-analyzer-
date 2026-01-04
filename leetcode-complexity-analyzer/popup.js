@@ -38,15 +38,15 @@ analyzeBtn.addEventListener("click", async () => {
     suggestionsDiv.innerHTML = "";
     toggleBtn.style.display = "none";
 
-const tabs = await chrome.tabs.query({
-  url: "*://leetcode.com/problems/*"
+const [tab] = await chrome.tabs.query({
+  active: true,
+  currentWindow: true
 });
 
-if (!tabs.length) {
-  throw new Error("Open a LeetCode problem editor page.");
+if (!tab || !tab.url?.includes("leetcode.com/problems/")) {
+  throw new Error("Open a LeetCode problem editor tab.");
 }
 
-const tab = tabs[0];
 
 
     /* 1️⃣ GET CODE FROM EDITOR (iframe-safe) */
@@ -81,18 +81,19 @@ const response = await sendToContent(tab.id, {
     renderResult(data);
 
     /* 4️⃣ BACKEND → DOM HIGHLIGHT */
-    const bottleneckLines = data.parsed_json?.bottleneck_lines;
+const bottleneckCode = data.parsed_json?.bottleneck_code;
 
-    if (Array.isArray(bottleneckLines) && bottleneckLines.length > 0) {
-      await sendToContent(tab.id, {
-        type: "HIGHLIGHT_LINES",
-        lines: bottleneckLines
-      });
-    } else {
-      await sendToContent(tab.id, {
-        type: "CLEAR_HIGHLIGHTS"
-      });
-    }
+if (Array.isArray(bottleneckCode) && bottleneckCode.length > 0) {
+  await sendToContent(tab.id, {
+    type: "HIGHLIGHT_CODE",
+    lines: bottleneckCode
+  });
+} else {
+  await sendToContent(tab.id, {
+    type: "CLEAR_HIGHLIGHTS"
+  });
+}
+
 
   } catch (err) {
     console.error("❌ Popup error:", err);

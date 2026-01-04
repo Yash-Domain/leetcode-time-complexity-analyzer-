@@ -5,11 +5,12 @@ let highlightedElements = [];
 /* ---------------- MESSAGE LISTENER ---------------- */
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  console.log("📩 Received in content.js:", msg);
+  console.log("📩 content.js received:", msg.type);
 
   if (msg.type === "GET_CODE") {
-    const editor = document.querySelector(".monaco-editor");
-    const textarea = editor?.querySelector("textarea");
+    const textarea =
+      document.querySelector(".monaco-editor textarea") ||
+      document.querySelector("textarea");
 
     if (!textarea || !textarea.value) {
       sendResponse({ error: "Code not found" });
@@ -20,60 +21,52 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
-  if (msg.type === "HIGHLIGHT_LINES") {
-    highlightLinesDOM(msg.lines);
+  if (msg.type === "HIGHLIGHT_CODE") {
+    highlightByCode(msg.lines);
   }
 
   if (msg.type === "CLEAR_HIGHLIGHTS") {
-    clearHighlightsDOM();
+    clearHighlights();
   }
 });
 
-/* ---------------- DOM HIGHLIGHTING ---------------- */
+/* ---------------- HIGHLIGHT LOGIC ---------------- */
 
-function clearHighlightsDOM() {
+function clearHighlights() {
   highlightedElements.forEach(el =>
     el.classList.remove("leetcode-dom-highlight")
   );
   highlightedElements = [];
 }
 
-function highlightLinesDOM(lines) {
-  clearHighlightsDOM();
+function normalize(str) {
+  return str.replace(/\s+/g, " ").trim();
+}
 
-  const editor = document.querySelector(".monaco-editor");
-  if (!editor) {
-    console.warn("❌ Monaco editor not found");
+function highlightByCode(bottleneckCode) {
+  clearHighlights();
+
+  if (!Array.isArray(bottleneckCode) || bottleneckCode.length === 0) {
     return;
   }
 
+  const editor = document.querySelector(".monaco-editor");
+  if (!editor) return;
+
   const viewLines = Array.from(editor.querySelectorAll(".view-line"));
-  if (viewLines.length === 0) return;
 
-  // Find first loop visually
-  let firstLoopIndex = -1;
-  for (let i = 0; i < viewLines.length; i++) {
-    const text = viewLines[i].innerText || "";
-    if (text.includes("for (") || text.includes("while (")) {
-      firstLoopIndex = i;
-      break;
-    }
-  }
+  const normalizedTargets = bottleneckCode.map(normalize);
 
-  lines.forEach(lineNumber => {
-    let idx = lineNumber - 1;
+  viewLines.forEach(lineEl => {
+    const text = normalize(lineEl.innerText || "");
 
-    // Do not highlight above first loop
-    if (firstLoopIndex !== -1 && idx < firstLoopIndex) {
-      idx = firstLoopIndex;
-    }
-
-    const lineEl = viewLines[idx];
-    if (lineEl) {
+    if (
+      normalizedTargets.some(target => text.includes(target))
+    ) {
       lineEl.classList.add("leetcode-dom-highlight");
       highlightedElements.push(lineEl);
     }
   });
 
-  console.log("✅ DOM highlight applied:", lines);
+  console.log("✅ Highlighted bottleneck_code:", bottleneckCode);
 }
