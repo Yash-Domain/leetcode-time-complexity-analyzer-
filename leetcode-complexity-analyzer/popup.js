@@ -1,3 +1,14 @@
+async function ensureContentScript(tabId) {
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: "__PING__" });
+  } catch {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["content.js"]
+    });
+  }
+}
+
 console.log("🔥 popup.js loaded");
 
 const analyzeBtn = document.getElementById("analyzeBtn");
@@ -7,27 +18,50 @@ const toggleBtn = document.getElementById("toggleSuggestions");
 
 let suggestionsVisible = false;
 
+/* ---------------- SAFE MESSAGE HELPER ---------------- */
+
+async function sendToContent(tabId, message) {
+  try {
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch (err) {
+    throw new Error(
+      "Content script not available. Open a LeetCode problem editor page."
+    );
+  }
+}
+
+/* ---------------- ANALYZE CLICK ---------------- */
+
 analyzeBtn.addEventListener("click", async () => {
   try {
     resultDiv.innerHTML = "<p>Analyzing...</p>";
     suggestionsDiv.innerHTML = "";
     toggleBtn.style.display = "none";
 
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true
-    });
+const tabs = await chrome.tabs.query({
+  url: "*://leetcode.com/problems/*"
+});
 
-    // 1️⃣ Get code from editor
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      type: "GET_CODE"
-    });
+if (!tabs.length) {
+  throw new Error("Open a LeetCode problem editor page.");
+}
+
+const tab = tabs[0];
+
+
+    /* 1️⃣ GET CODE FROM EDITOR (iframe-safe) */
+await ensureContentScript(tab.id);
+
+const response = await sendToContent(tab.id, {
+  type: "GET_CODE"
+});
+
 
     if (!response || response.error || !response.code) {
       throw new Error("Could not extract code from editor");
     }
 
-    // 2️⃣ Send code to backend
+    /* 2️⃣ SEND CODE TO BACKEND */
     const backendRes = await fetch("http://localhost:3000/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -39,25 +73,23 @@ analyzeBtn.addEventListener("click", async () => {
 
     const data = await backendRes.json();
 
-    // 🚨 Explicit backend failure handling (NO masking)
     if (!backendRes.ok || data.ok === false) {
       throw new Error(data.error || data.message || "Backend failed");
     }
 
-    // 3️⃣ Render result in popup
+    /* 3️⃣ RENDER RESULT */
     renderResult(data);
 
-    // 4️⃣ SUBSESSION 3 — Backend → DOM Highlight integration
+    /* 4️⃣ BACKEND → DOM HIGHLIGHT */
     const bottleneckLines = data.parsed_json?.bottleneck_lines;
 
     if (Array.isArray(bottleneckLines) && bottleneckLines.length > 0) {
-      chrome.tabs.sendMessage(tab.id, {
+      await sendToContent(tab.id, {
         type: "HIGHLIGHT_LINES",
         lines: bottleneckLines
       });
     } else {
-      // Optimal or no bottlenecks → clear previous highlights
-      chrome.tabs.sendMessage(tab.id, {
+      await sendToContent(tab.id, {
         type: "CLEAR_HIGHLIGHTS"
       });
     }
@@ -78,9 +110,7 @@ analyzeBtn.addEventListener("click", async () => {
 function renderResult(data) {
   if (!data.parsed_json) {
     resultDiv.innerHTML = `
-      <p style="color:red;">
-        Analysis unavailable
-      </p>
+      <p style="color:red;">Analysis unavailable</p>
     `;
     toggleBtn.style.display = "none";
     return;
