@@ -20,21 +20,64 @@ console.log("✅ API key detected");
 
 app.post("/analyze", async (req, res) => {
   try {
-    const { code, language } = req.body;
+    const { code, language, problem_slug } = req.body;
 
     if (!code) {
       return res.status(400).json({ error: "Code required" });
     }
 
-const prompt = `
-You are a code complexity analyzer.
+    const prompt = `
+You are an expert algorithm analyst.
 
-Analyze the following ${language} code.
+You are analyzing a solution for the LeetCode problem:
+PROBLEM: ${problem_slug}
 
-Return your answer in STRICT JSON format.
+Follow these steps STRICTLY and in order:
+
+STEP 1:
+Analyze the given ${language} code and determine its WORST-CASE
+time complexity and space complexity based ONLY on the code structure.
+
+STEP 2:
+Using the LeetCode problem name, determine the KNOWN OPTIMAL
+worst-case time complexity for this problem.
+
+STEP 3:
+Compare the two results.
+
+- If the code’s time complexity MATCHES the problem’s optimal complexity:
+  - Set is_optimal = true
+  - Return immediately with:
+    - empty bottleneck_code
+    - empty suggestions
+
+- If the code’s time complexity DOES NOT MATCH the problem’s optimal complexity:
+  - Set is_optimal = false
+  - Return:
+    - the ACTUAL time complexity of the code
+    - the ACTUAL space complexity of the code
+    - the EXACT bottleneck code copied verbatim from input
+    - suggestions that improve the complexity FOR THIS PROBLEM
+
+CRITICAL RULE FOR is_optimal:
+
+- is_optimal must be decided ONLY by comparing WORST-CASE Big-O time complexity.
+- Code completeness, formatting, missing edge cases, or logical correctness
+  MUST NOT affect is_optimal.
+- Even if the code is incomplete or incorrect, if its worst-case time complexity
+  matches the known optimal worst-case complexity, is_optimal = true.
+
+
+IMPORTANT:
+- Do NOT mark a solution as non-optimal if only constant-factor
+  or pruning optimizations are possible.
+- Do NOT invent optimizations that do not reduce worst-case Big-O.
+- Do NOT add bottlenecks or suggestions when is_optimal = true.
+
+Return your answer in STRICT JSON format only.
 Do NOT use markdown.
 Do NOT add explanations outside JSON.
-Do NOT wrap response in code blocks.
+Do NOT wrap output in code blocks.
 
 JSON schema (must match exactly):
 
@@ -42,24 +85,14 @@ JSON schema (must match exactly):
   "time_complexity": "string",
   "space_complexity": "string",
   "is_optimal": boolean,
-  "bottleneck_lines": number[],
   "bottleneck_code": string[],
   "suggestions": string[]
 }
 
-Rules:
-- time_complexity must be Big-O
-- space_complexity must be Big-O
-- bottleneck_lines must be 1-based
-- bottleneck_code must contain the EXACT lines copied verbatim from the input code where the main time complexity bottleneck occurs
-- Do NOT paraphrase bottleneck_code
-- Preserve spacing and symbols exactly as in input
-- suggestions empty if optimal
 
-Code:
+CODE:
 ${code}
 `;
-
 
     const aiRes = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
@@ -70,7 +103,7 @@ ${code}
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemma-3-27b-it:free",
+          model: "kwaipilot/kat-coder-pro:free",
           messages: [{ role: "user", content: prompt }],
           temperature: 0,
         }),
@@ -96,28 +129,12 @@ ${code}
 
         parsed = JSON.parse(content);
 
-        /* 🔧 MINIMAL NORMALIZATION STARTS HERE */
+        /* 🔧 MINIMAL NORMALIZATION */
 
-        if (Array.isArray(parsed.bottleneck_lines)) {
-          const totalLines = code.split("\n").length;
-
-          const region = new Set();
-
-          parsed.bottleneck_lines.forEach((line) => {
-            if (typeof line === "number") {
-              // expand to small region: line-1, line, line+1
-              for (let l = line - 1; l <= line + 1; l++) {
-                if (l >= 1 && l <= totalLines) {
-                  region.add(l);
-                }
-              }
-            }
-          });
-
-          parsed.bottleneck_lines = Array.from(region).sort((a, b) => a - b);
+        if (parsed.is_optimal === true) {
+          parsed.bottleneck_code = [];
+          parsed.suggestions = [];
         }
-
-        /* 🔧 MINIMAL NORMALIZATION ENDS HERE */
       }
     } catch (e) {
       console.warn("⚠️ JSON parse failed");
