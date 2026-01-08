@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode Complexity Analyzer – Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <h1>LeetCode Complexity Analyzer</h1>
+  <p>Configure your AI provider once. You’re good to go.</p>
+
+  <form id="settingsForm">
+    <label>
+      AI Provider
+      <select id="provider">
+        <option value="openrouter">OpenRouter (Free – Recommended)</option>
+        <option value="groq">Groq (Fast & Accurate)</option>
+        <option value="openai">OpenAI</option>
+      </select>
+    </label>
+
+    <br /><br />
+
+    <label>
+      API Key
+      <input
+        type="password"
+        id="apiKey"
+        placeholder="sk-xxxxxxxxxxxxxxxx"
+      />
+    </label>
+
+    <p class="hint">
+      Stored locally in your browser. This extension never uploads your key.
+    </p>
+
+    <br />
+
+    <label>
+      Model Name
+      <input
+        type="text"
+        id="model"
+        placeholder="mistralai/mistral-7b-free"
+      />
+    </label>
+
+    <br /><br />
+
+    <button type="submit">Save Settings</button>
+    <p id="status"></p>
+  </form>
+
+  <script src="options.js"></script>
+</body>
+</html>

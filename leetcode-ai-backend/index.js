@@ -11,16 +11,12 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-if (!process.env.OPENROUTER_API_KEY) {
-  console.error("❌ OPENROUTER_API_KEY not found");
-  process.exit(1);
-}
+console.log("ℹ️ Using user-provided API key");
 
-console.log("✅ API key detected");
 
 app.post("/analyze", async (req, res) => {
   try {
-    const { code, language, problem_slug } = req.body;
+    const { code, language, problem_slug, apiKey, model } = req.body;
 
     if (!code) {
       return res.status(400).json({ error: "Code required" });
@@ -99,14 +95,15 @@ ${code}
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "kwaipilot/kat-coder-pro:free",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0,
-        }),
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0,
+      }),
+
       }
     );
 

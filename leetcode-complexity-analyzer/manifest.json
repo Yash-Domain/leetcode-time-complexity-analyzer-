@@ -6,17 +6,20 @@
 
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "storage"
   ],
 
   "host_permissions": [
     "https://leetcode.com/*",
-    "http://localhost:3000/*"
+    "https://leetcode-time-complexity-analyzer.onrender.com/*"
   ],
 
   "action": {
     "default_popup": "popup.html"
   },
+
+  "options_page": "options.html",
 
   "content_scripts": [
     {

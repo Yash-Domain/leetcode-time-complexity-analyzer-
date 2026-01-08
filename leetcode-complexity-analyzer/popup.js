@@ -1,3 +1,12 @@
+function getUserSettings() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(
+      ["provider", "apiKey", "model"],
+      (result) => resolve(result)
+    );
+  });
+}
+
 async function ensureContentScript(tabId) {
   try {
     await chrome.tabs.sendMessage(tabId, { type: "__PING__" });
@@ -34,6 +43,20 @@ async function sendToContent(tabId, message) {
 
 analyzeBtn.addEventListener("click", async () => {
   try {
+
+    const settings = await getUserSettings();
+
+    if (!settings.apiKey || !settings.model) {
+      resultDiv.innerHTML = `
+        <p style="color:#d97706;">
+          ⚠️ Setup required.<br/>
+          Please configure your API key in extension settings.
+        </p>
+      `;
+      toggleBtn.style.display = "none";
+      return;
+    }
+
     resultDiv.innerHTML = "<p>Analyzing...</p>";
     suggestionsDiv.innerHTML = "";
     toggleBtn.style.display = "none";
@@ -62,12 +85,14 @@ const response = await sendToContent(tab.id, {
     }
 
     /* 2️⃣ SEND CODE TO BACKEND */
-    const backendRes = await fetch("http://localhost:3000/analyze", {
+    const backendRes = await fetch("https://leetcode-time-complexity-analyzer.onrender.com/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         language: "cpp",
-        code: response.code
+        code: response.code,
+        apiKey: settings.apiKey,
+        model: settings.model
       })
     });
 
