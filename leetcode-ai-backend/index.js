@@ -97,24 +97,36 @@ CODE:
 ${code}
 `;
 
-    const aiRes = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0,
-      }),
+const aiRes = await fetch(
+  "https://openrouter.ai/api/v1/chat/completions",
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://leetcode.com",
+      "X-Title": "LeetCode Complexity Analyzer"
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: "user", content: prompt }
+      ],
+      temperature: 0
+    })
+  }
+);
 
-      }
-    );
 
     const rawText = await aiRes.text();
+
+    if (!aiRes.ok) {
+  return res.status(aiRes.status).json({
+    ok: false,
+    error: "OpenRouter request failed",
+    raw_response: rawText
+  });
+}
 
     console.log("🔵 RAW AI RESPONSE:");
     console.log(rawText);
