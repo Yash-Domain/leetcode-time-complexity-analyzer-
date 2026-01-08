@@ -18,6 +18,13 @@ app.post("/analyze", async (req, res) => {
   try {
     const { code, language, problem_slug, apiKey, model } = req.body;
 
+    if (!apiKey || !model) {
+      return res.status(400).json({
+        ok: false,
+        error: "API key or model missing"
+      });
+    }
+
     if (!code) {
       return res.status(400).json({ error: "Code required" });
     }
