@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "LeetCode Complexity Analyzer",
+  "name": "LeetCode Complexity Insight",
   "version": "1.0.0",
   "description": "Analyzes time and space complexity of LeetCode problems directly on the problem page.",
 
