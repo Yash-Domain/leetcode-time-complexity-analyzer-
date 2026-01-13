@@ -94,7 +94,7 @@ Your key is:
 - ✅ Requests go only to the user-configured LLM API
 
 Full Privacy Policy:  
-👉 *(Add link here)*
+👉 (https://github.com/Yash-Domain/leetcode-time-complexity-analyzer-/blob/main/PRIVACY_POLICY.md)
 
 ---
 
