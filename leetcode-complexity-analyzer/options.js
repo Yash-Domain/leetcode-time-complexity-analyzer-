@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("settingsForm");
 
   /* -------- LOAD SAVED SETTINGS -------- */
-  chrome.storage.sync.get(
+  chrome.storage.local.get(
     ["provider", "apiKey", "model"],
     (result) => {
       if (result.provider) providerSelect.value = result.provider;
@@ -29,14 +29,14 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    chrome.storage.sync.set(
+    chrome.storage.local.set(
       {
         provider,
         apiKey,
         model
       },
       () => {
-        status.textContent = "✅ Settings saved successfully";
+        status.textContent = "✅ Settings saved locally on this device";
         status.style.color = "green";
       }
     );

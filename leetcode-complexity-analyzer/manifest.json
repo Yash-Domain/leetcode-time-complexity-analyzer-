@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "LeetCode Complexity Analyzer",
-  "version": "1.0",
-  "description": "Analyzes time and space complexity of LeetCode solutions and provides optimization insights.",
+  "version": "1.0.0",
+  "description": "Analyzes time and space complexity of LeetCode problems directly on the problem page.",
 
   "permissions": [
     "activeTab",
@@ -11,8 +11,7 @@
   ],
 
   "host_permissions": [
-    "https://leetcode.com/*",
-    "https://leetcode-time-complexity-analyzer.onrender.com/*"
+    "https://leetcode.com/*"
   ],
 
   "action": {
