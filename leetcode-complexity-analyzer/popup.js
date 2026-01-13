@@ -1,6 +1,6 @@
 function getUserSettings() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(
+    chrome.storage.local.get(
       ["provider", "apiKey", "model"],
       (result) => resolve(result)
     );
